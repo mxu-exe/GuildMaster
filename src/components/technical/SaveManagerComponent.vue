@@ -39,6 +39,7 @@
 <script lang="ts">
 import {defineComponent} from "vue";
 import Nail from "@/components/misc/Nail.vue";
+import pako from "pako";
 
 export default defineComponent({
   name: "ChangelogComponent",
@@ -61,15 +62,18 @@ export default defineComponent({
         alert("No save file found!");
         return;
       }
-      navigator.clipboard.writeText(btoa(save));
+      const compressed = pako.deflate(save);
+      const saveBase64 = btoa(String.fromCharCode(...compressed));
+      navigator.clipboard.writeText(saveBase64);
       setTimeout(() => alert("Save data copied to clipboard!"), 100);
     },
     importSave() {
       const saveBase64 = this.importSaveText;
       try {
-        const save = atob(saveBase64);
-        JSON.parse(save);
-        window.localStorage.setItem("savedGame", save);
+        const save = Uint8Array.from(atob(saveBase64), c => c.charCodeAt(0));
+        const decompressed = pako.inflate(save, {to: "string"});
+        JSON.parse(decompressed);
+        window.localStorage.setItem("savedGame", decompressed);
         window.location.reload();
       } catch (e) {
         alert("Invalid save file!");
